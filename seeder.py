@@ -79,8 +79,45 @@ def chunk_documents(documents):
     print(f"Created {len(chunks)} chunks.")
     return chunks
 
+def embed_and_store(chunks):
+    """Embed chunks and persist to ChromaDB."""
+
+    print("--- Embedding and storing in ChromaDB ---")
+
+    embedding_model = HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2"
+    )
+
+    db = Chroma.from_documents(
+        documents=chunks,
+        embedding=embedding_model,
+        persist_directory=str(CHROMA_PATH),
+    )
+
+    db.persist()
+    print(f"Success! Database created at '{CHROMA_PATH}'")
+
+def main():
+    # Clear existing database if you want a clean sync
+    if CHROMA_PATH.exists():
+        print(" Clearing existing ChromaDB...")
+        shutil.rmtree(CHROMA_PATH)
+
+    documents = load_documents()
+
+    if not documents:
+        print("No documents found in the data folder.")
+        return
+
+    chunks = chunk_documents(documents)
+
+    embed_and_store(chunks)
+
+
+if __name__ == "__main__":
+    main()
+
 
 # take files from 'data'
 # process them into chunks
 # store them in the vector database
-
