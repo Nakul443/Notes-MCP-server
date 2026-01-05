@@ -2,6 +2,8 @@ import sys
 
 # Combine all MCP tools into a single server
 from mcp.server.fastmcp import FastMCP  # pyright: ignore[reportMissingImports]
+from langchain_community.vectorstores import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
 
 # Central MCP server
 mcp = FastMCP("notes-mcp-server")
@@ -21,6 +23,19 @@ async def findRelevantNotes(query: str) -> str:
     """Find relevant notes based on a query string."""
     # Placeholder implementation
     return f"Relevant notes for query: {query}"
+
+@mcp.tool()
+async def search_my_notes(query: str) -> str:
+    """Search through the documents in the 'data' folder for answers."""
+    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    db = Chroma(persist_directory="chroma_db", embedding_function=embeddings)
+    
+    # Retrieve the top 3 most relevant chunks
+    docs = db.similarity_search(query, k=3)
+    
+    results = [f"Source: {d.metadata.get('source')}\nContent: {d.page_content}" for d in docs]
+    return "\n---\n".join(results)
+
 
 def main():
     print("Notes MCP Server is running...", file=sys.stderr)
