@@ -56,6 +56,30 @@ def load_documents():
 
     return documents
 
+
+# primary job is to take the massive strings of text extracted from your PDFs and Text files
+# and break them into smaller, pieces
+def chunk_documents(documents):
+    """Split documents into fixed-size chunks."""
+
+    print(f"--- Splitting {len(documents)} documents into chunks ---")
+
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200,
+        separators=["\n\n", "\n", " ", ""],
+    )
+
+    chunks = splitter.split_documents(documents)
+
+    # add chunk index metadata
+    for i, chunk in enumerate(chunks):
+        chunk.metadata["chunk_id"] = i
+
+    print(f"Created {len(chunks)} chunks.")
+    return chunks
+
+
 # take files from 'data'
 # process them into chunks
 # store them in the vector database
