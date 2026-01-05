@@ -1,0 +1,53 @@
+{
+  "name": "notes-mcp-server",
+  "version": "1.0.0",
+  "tools": [
+    {
+      "name": "get_alerts",
+      "description": "Get active weather alerts for a US state",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "state": { "type": "string" }
+        },
+        "required": ["state"]
+      }
+    },
+    {
+      "name": "get_forecast",
+      "description": "Get weather forecast for a location",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "latitude": { "type": "number" },
+          "longitude": { "type": "number" }
+        },
+        "required": ["latitude", "longitude"]
+      }
+    },
+    {
+      "name": "add_numbers",
+      "description": "Add two numbers",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "a": { "type": "number" },
+          "b": { "type": "number" }
+        },
+        "required": ["a", "b"]
+      }
+    },
+    {
+      "name": "subtract_numbers",
+      "description": "Subtract two numbers",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "a": { "type": "number" },
+          "b": { "type": "number" }
+        },
+        "required": ["a", "b"]
+      }
+    }
+  ]
+}
