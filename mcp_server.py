@@ -15,21 +15,26 @@ async def add_numbers(a: float, b: float) -> float:
 
 @mcp.tool()
 async def subtract_numbers(a: float, b: float) -> float:
-    """Subtract two numbers."""
+    """Subtract two numbers.""" # this comment is read by gemini and then it uses the relevant function
     return a - b
 
 @mcp.tool()
-async def findRelevantNotes(query: str) -> str:
-    """Find relevant notes based on a query string."""
-    # Placeholder implementation
-    return f"Relevant notes for query: {query}"
-
-@mcp.tool()
 async def search_my_notes(query: str) -> str:
-    """Search through the documents in the 'data' folder for answers."""
+    """Search through my notes and return relevant information.
+    Use this tool whenever user prefixes the query with 'search my notes'.
+    Args :
+        query (str): The search query.
+    Returns:
+        str: The search results.
+    
+    Example: 
+        user input: "search my notes about project deadlines"
+        function call: search_my_notes("project deadlines")
+        returns: "Source: notes.txt
+    """
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     db = Chroma(persist_directory="chroma_db", embedding_function=embeddings)
-    
+
     # Retrieve the top 3 most relevant chunks
     docs = db.similarity_search(query, k=3)
     
