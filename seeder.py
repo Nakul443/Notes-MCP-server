@@ -24,7 +24,7 @@ CHROMA_PATH = BASE_DIR / "chroma_db" # folder to store ChromaDB
 
 # finds all relevant files in the 'data' folder
 # loads them into documents with metadata
-# and package it into a format that the AI can understand
+# and package it into a format that the AI can understand and work with
 def load_documents():
     if not DATA_PATH.exists():
         print(f" Data folder not found: {DATA_PATH}")
