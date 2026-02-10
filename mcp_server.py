@@ -50,10 +50,12 @@ async def search_my_notes(query: str, filename: Optional[str] = None) -> str:
     rerank_request = RerankRequest(query=query, passages=passages)
     reranked_results = ranker.rerank(rerank_request)
 
-    # 5. Take the top 3 truly relevant results after reranking
-    final_docs = reranked_results[:3]
+    # 5. Take the top 3 results, but ONLY if they are actually relevant
+    THRESHOLD = 0.1  # If score is below 0.1, it's probably junk
+    final_docs = [res for res in reranked_results[:3] if res['score'] >= THRESHOLD]
     
-    # 
+    if not final_docs:
+        return "I found some notes, but none of them seem relevant enough to answer your question accurately."
     
     formatted_results = []
     for d in final_docs:
