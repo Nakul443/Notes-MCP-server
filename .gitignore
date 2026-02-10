@@ -1,9 +1,33 @@
-# Python
+# Python bytecode & cache
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
-# Virtual env
+# Environments
 .venv/
+venv/
+ENV/
+env/
 
-# Editor
+# Vector Database (Local data should never be committed)
+chroma_db/
+*.db
+
+# AI Specific / Model Caches
+.cache/
+flashrank_models/
+
+# Logs and temp files
+*.log
+tmp/
+
+# Editor / OS files
 .vscode/
+.idea/
+.DS_Store
+
+# Sensitive Data (VERY IMPORTANT)
+.env
+data/*
+!data/.gitkeep
