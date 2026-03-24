@@ -1,296 +1,174 @@
 # Notes MCP Server
 
-A Model Context Protocol (MCP) server that provides tools for searching personal notes using vector embeddings, performing basic calculations, and accessing weather information.
+MCP server for personal note search with retrieval + reranking, plus simple calculator tools.
 
-## Overview
+## What This Project Does
 
-This project implements an MCP server that combines multiple tools:
-- **Note Search**: Semantic search through your notes using ChromaDB and HuggingFace embeddings
-- **Math Operations**: Basic arithmetic functions (add, subtract)
-- **Weather Services**: Get weather alerts and forecasts via the National Weather Service API
+This repository provides:
 
-## Project Structure
+- **Semantic note search** via `search_my_notes`
+  - ChromaDB vector retrieval (`k=10`) + FlashRank reranking
+  - Optional file-level filtering by filename
+  - Top 3 relevant chunks returned with score and source
+- **Basic math tools**
+  - `add_numbers(a, b)`
+  - `subtract_numbers(a, b)`
+- **Standalone weather tool module**
+  - `src/services/weather_service.py` defines `get_alerts` and `get_forecast`
+  - This module is not currently wired into `src/mcp_server.py`
 
+## Repository Layout
+
+```text
+Notes-MCP-server/
+├── src/
+│   ├── mcp_server.py              # Main MCP server (search + math tools)
+│   ├── seeder.py                  # Ingest data -> chunk -> embed -> store
+│   └── services/
+│       └── weather_service.py     # Separate weather MCP server/tools
+├── tests/
+│   ├── test_rag.py                # Retrieval/reranking behavior check
+│   └── test_fixed_search.py       # Async search pipeline simulation
+├── data/                          # Put .txt and .pdf files here
+├── chroma_db/                     # Generated vector database (git-ignored)
+├── requirements.txt
+├── tools.json                     # Tool schema reference
+├── run_tests.sh
+├── Dockerfile
+└── docker-compose.yml
 ```
-notes-mcp-server/
-├── mcp_server.py          # Main MCP server with all tools
-├── seeder.py              # Script to process and embed documents
-├── tools.json             # Tool definitions (for external MCP clients)
-├── data/                  # Directory containing your notes/documents
-│   ├── note1.txt
-│   └── note2.txt
-├── chroma_db/             # ChromaDB vector database (generated)
-└── weather/               # Weather service module
-    ├── __init__.py
-    └── weather_service.py
-```
 
-## Features
+## Requirements
 
-### 1. Note Search (`search_my_notes`)
-- Searches through your notes using semantic similarity
-- Returns the top 3 most relevant chunks with source information
-- Uses HuggingFace embeddings (`all-MiniLM-L6-v2`) for vector search
+- Python 3.11+ recommended
+- `pip`
+- Internet access for first-time model downloads (HuggingFace + FlashRank)
 
-### 2. Math Operations
-- `add_numbers(a, b)`: Add two numbers
-- `subtract_numbers(a, b)`: Subtract two numbers
+## Quick Start
 
-### 3. Weather Services
-- `get_alerts(state)`: Get active weather alerts for a US state
-- `get_forecast(latitude, longitude)`: Get 5-day weather forecast for a location
-
-## Prerequisites
-
-- Python 3.8+
-- pip (Python package manager)
-
-## Installation
-
-1. **Clone or navigate to the project directory:**
-   ```bash
-   cd notes-mcp-server
-   ```
-
-2. **Create a virtual environment (recommended):**
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   ```
-
-3. **Install dependencies:**
-   ```bash
-   pip install mcp fastmcp langchain-community langchain-huggingface chromadb httpx
-   ```
-
-   Or install individually:
-   ```bash
-   pip install mcp
-   pip install fastmcp
-   pip install langchain-community
-   pip install langchain-huggingface
-   pip install chromadb
-   pip install httpx
-   ```
-
-## Usage
-
-### Step 1: Add Your Notes
-
-Place your text files (`.txt`) or PDF files (`.pdf`) in the `data/` directory:
+1) Create and activate a virtual environment:
 
 ```bash
-# Example: Copy your notes
-cp ~/my-notes/*.txt data/
-cp ~/documents/*.pdf data/
+python3 -m venv venv
+source venv/bin/activate
 ```
 
-### Step 2: Seed the Vector Database
-
-Run the seeder script to process your documents:
+2) Install dependencies:
 
 ```bash
-python seeder.py
+pip install -r requirements.txt
 ```
 
-This script will:
-1. Load all `.txt` and `.pdf` files from the `data/` directory
-2. Split them into chunks (1000 characters with 200 character overlap)
-3. Generate embeddings using HuggingFace's `all-MiniLM-L6-v2` model
-4. Store them in ChromaDB at `chroma_db/`
+3) Add your notes to `data/` (`.txt` and/or `.pdf`).
 
-**Note:** The seeder will delete and recreate the database each time it runs. To update your notes, simply add/modify files in `data/` and run the seeder again.
-
-### Step 3: Start the MCP Server
-
-Run the main server:
+4) Build the vector DB:
 
 ```bash
-python mcp_server.py
+python3 src/seeder.py
 ```
 
-The server runs using stdio transport, which is compatible with MCP clients like Cursor, Claude Desktop, etc.
+5) Run the MCP server:
 
-## How It Works
-
-### Document Processing Pipeline
-
-1. **Loading** (`load_documents()`):
-   - Scans the `data/` folder for `.txt` and `.pdf` files
-   - Uses LangChain loaders to extract text
-   - Attaches metadata (source file, etc.)
-
-2. **Chunking** (`chunk_documents()`):
-   - Splits documents into smaller chunks (1000 chars, 200 overlap)
-   - Uses `RecursiveCharacterTextSplitter` with smart separators
-   - Adds chunk IDs to metadata
-
-3. **Embedding & Storage** (`embed_and_store()`):
-   - Generates embeddings using HuggingFace's sentence transformer
-   - Stores vectors in ChromaDB with persistence
-   - Database is saved to `chroma_db/` directory
-
-### Search Functionality
-
-When you call `search_my_notes(query)`:
-- The query is embedded using the same model
-- ChromaDB performs similarity search
-- Returns top 3 most relevant chunks with source information
-
-## Configuration
-
-### Changing Chunk Size
-
-Edit `seeder.py` to modify chunking parameters:
-
-```python
-splitter = RecursiveCharacterTextSplitter(
-    chunk_size=1000,      # Change this
-    chunk_overlap=200,    # Change this
-    separators=["\n\n", "\n", " ", ""],
-)
+```bash
+python3 src/mcp_server.py
 ```
 
-### Changing Embedding Model
+The server uses MCP `stdio` transport.
 
-Edit the model name in both `seeder.py` and `mcp_server.py`:
+## Search Pipeline
 
-```python
-# In seeder.py (line 89)
-embedding_model = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"  # Change this
-)
+`src/seeder.py` performs:
 
-# In mcp_server.py (line 35)
-embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")  # Change this
-```
+1. Load docs from `data/` (currently `.txt`, `.pdf`)
+2. Split with `RecursiveCharacterTextSplitter`
+   - `chunk_size=1000`
+   - `chunk_overlap=200`
+3. Embed with `sentence-transformers/all-MiniLM-L6-v2`
+4. Persist to `chroma_db/`
 
-**Important:** Use the same model in both files for consistent search results.
+`src/mcp_server.py` search flow:
 
-### Supported File Types
+1. Similarity retrieval from Chroma (`k=10`)
+2. Reranking with FlashRank model `ms-marco-MiniLM-L-12-v2`
+3. Keep up to top 3 results with score threshold `>= 0.1`
 
-Currently supported:
-- `.txt` files (via `TextLoader`)
-- `.pdf` files (via `PyPDFLoader`)
+## MCP Tools Exposed by Main Server
 
-To add more file types, modify `load_documents()` in `seeder.py`:
+From `src/mcp_server.py`:
 
-```python
-loaders = {
-    ".txt": TextLoader,
-    ".pdf": PyPDFLoader,
-    ".md": MarkdownLoader,  # Add new types here
-}
-```
+- `search_my_notes(query: str, filename: Optional[str] = None) -> str`
+- `add_numbers(a: float, b: float) -> float`
+- `subtract_numbers(a: float, b: float) -> float`
 
-## MCP Client Configuration
+## Weather Tools
 
-### For Cursor/Claude Desktop
+`src/services/weather_service.py` includes:
 
-Add this to your MCP client configuration:
+- `get_alerts(state: str)`
+- `get_forecast(latitude: float, longitude: float)`
+
+These call the National Weather Service API via `httpx`.
+
+Important: these tools are not registered in the main server process in `src/mcp_server.py`; they are implemented in a separate FastMCP instance.
+
+## MCP Client Configuration Example
+
+Use this in your MCP client (example shape):
 
 ```json
 {
   "mcpServers": {
     "notes-mcp-server": {
-      "command": "python",
-      "args": ["/path/to/notes-mcp-server/mcp_server.py"]
+      "command": "python3",
+      "args": ["/absolute/path/to/Notes-MCP-server/src/mcp_server.py"]
     }
   }
 }
 ```
 
-### Using tools.json
+## Running Tests
 
-The `tools.json` file provides tool definitions for external MCP clients. Note that the weather tools are defined here but not currently integrated into the main server. To use them, you would need to import the weather module in `mcp_server.py`.
+Run both test scripts:
 
-## Troubleshooting
-
-### Database Not Found Error
-
-If you see errors about the database not existing:
-1. Make sure you've run `seeder.py` first
-2. Check that `chroma_db/` directory exists
-3. Verify files exist in the `data/` directory
-
-### Import Errors
-
-If you get import errors:
-- Ensure all dependencies are installed: `pip install -r requirements.txt` (if available)
-- Activate your virtual environment
-- Check Python version: `python --version` (should be 3.8+)
-
-### No Search Results
-
-If searches return no results:
-- Verify documents were processed: check `chroma_db/` exists and has files
-- Re-run `seeder.py` to rebuild the database
-- Check that your query is relevant to the content in your notes
-
-### Weather API Issues
-
-Weather services use the National Weather Service API (no API key required):
-- Ensure you have internet connectivity
-- Check that state codes are valid (e.g., "CA", "NY", "TX")
-- Verify coordinates are valid (latitude: -90 to 90, longitude: -180 to 180)
-
-## Development
-
-### Adding New Tools
-
-To add a new tool to the MCP server:
-
-1. Open `mcp_server.py`
-2. Add a new function with the `@mcp.tool()` decorator:
-
-```python
-@mcp.tool()
-async def my_new_tool(param: str) -> str:
-    """Description of what the tool does."""
-    # Your implementation
-    return result
+```bash
+./run_tests.sh
 ```
 
-3. The tool will automatically be available to MCP clients
+Or run individually:
 
-### Testing
-
-Test individual components:
-
-```python
-# Test seeder
-python seeder.py
-
-# Test server (will run until interrupted)
-python mcp_server.py
+```bash
+python3 tests/test_rag.py
+python3 tests/test_fixed_search.py
 ```
 
-## File Descriptions
+## Docker
 
-- **`mcp_server.py`**: Main server file that defines all MCP tools and runs the server
-- **`seeder.py`**: Processes documents from `data/` and creates the vector database
-- **`tools.json`**: Tool schema definitions for external MCP clients
-- **`weather/weather_service.py`**: Weather API integration (currently separate module)
-- **`data/`**: Directory for your notes and documents
-- **`chroma_db/`**: Generated vector database (do not edit manually)
+Build and start:
 
-## Notes
+```bash
+docker compose up --build
+```
 
-- The vector database (`chroma_db/`) is persistent and will be reused between runs
-- Running `seeder.py` will delete and recreate the database
-- The embedding model is downloaded automatically on first use
-- Weather services require internet connectivity
-- The server uses stdio transport for MCP communication
+Notes:
 
-## License
+- `docker-compose.yml` mounts `./data` and `./chroma_db` into the container
+- `Dockerfile` starts `python3 src/mcp_server.py`
+- Make sure `chroma_db/` has been seeded if you want immediate search results
 
-This project appears to be for personal use. Modify as needed for your requirements.
+## Common Issues
 
-## Contributing
+- **No results / weak results**
+  - Re-run `python3 src/seeder.py`
+  - Verify files exist in `data/`
+  - Check query quality and optional filename filter value
+- **Model load delays on first run**
+  - Expected; embedding/reranker models are downloaded and cached
+- **DB missing**
+  - `chroma_db/` is created by `src/seeder.py`
 
-Feel free to extend this project with:
-- Additional file type support
-- More sophisticated search features
-- Additional tools and integrations
-- Better error handling and logging
+## Development Notes
+
+- Keep embedding model names aligned between seeder and server for consistent retrieval behavior.
+- To support new file types, extend the `loaders` mapping in `src/seeder.py`.
+- `tools.json` is a schema/reference artifact and may include tools not currently active in the main server runtime.
 
