@@ -1,0 +1,12 @@
+# version: '3.8'
+
+services:
+  notes-mcp:
+    build: .
+    container_name: notes-mcp-server
+    volumes:
+      # Mount your local data and DB so changes persist without rebuilding
+      - ./data:/app/data
+      - ./chroma_db:/app/chroma_db
+    environment:
+      - PYTHONUNBUFFERED=1
