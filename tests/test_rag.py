@@ -3,18 +3,24 @@
 # stage 1: standard vector search using Chroma and HuggingFaceEmbeddings
 # stage 2: reranking using FlashRank to ensure the most relevant results are returned
 
+# purpose of this file is to test the retrieval and reranking accuracy of the RAG system
+import time
+from pathlib import Path
 from langchain_community.vectorstores import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 from flashrank import Ranker, RerankRequest
-import time
 
 def test_retrieval_accuracy(query):
+    # 1. Setup Paths - Adjusted for src/ structure
+    BASE_DIR = Path(__file__).parent.parent.resolve()
+    CHROMA_PATH = BASE_DIR / "chroma_db"
+
     print(f"\n TESTING QUERY: '{query}'")
     print("="*50)
 
     # 1. Setup
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-    db = Chroma(persist_directory="chroma_db", embedding_function=embeddings)
+    db = Chroma(persist_directory=str(CHROMA_PATH), embedding_function=embeddings)
     
     # 2. Measure Standard Retrieval (Stage 1)
     start_time = time.time()
@@ -27,7 +33,7 @@ def test_retrieval_accuracy(query):
 
     # 3. Measure Reranking (Stage 2)
     passages = [{"id": i, "text": d.page_content, "meta": d.metadata} for i, (d, s) in enumerate(initial_docs)]
-    ranker = Ranker(model_name="ms-marco-MiniLM-L-12-v2")
+    ranker = Ranker(model_name="ms-marco-MiniLM-L-12-v2", cache_dir="/tmp/flashrank")
     rerank_request = RerankRequest(query=query, passages=passages)
     
     start_time = time.time()
@@ -39,6 +45,5 @@ def test_retrieval_accuracy(query):
         print(f"    Top {i+1}: Score: {res['score']:.4f} | Source: {res['meta'].get('source_file')} | Text: {res['text'][:60]}...")
 
 if __name__ == "__main__":
-    # Change this query to something that exists in your notes!
     test_query = "What are the project deadlines?" 
     test_retrieval_accuracy(test_query)

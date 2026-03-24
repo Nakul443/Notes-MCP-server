@@ -3,12 +3,30 @@
   "version": "1.0.0",
   "tools": [
     {
+      "name": "search_my_notes",
+      "description": "Search through personal digital notes and documents using semantic search. Use this to find information about past projects, personal thoughts, or specific facts stored in the user's data folder. You can optionally filter by a specific filename.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The natural language search query or question."
+          },
+          "filename": {
+            "type": "string",
+            "description": "Optional: The specific filename (e.g., 'note1.txt') to restrict the search to."
+          }
+        },
+        "required": ["query"]
+      }
+    },
+    {
       "name": "get_alerts",
       "description": "Get active weather alerts for a US state",
       "input_schema": {
         "type": "object",
         "properties": {
-          "state": { "type": "string" }
+          "state": { "type": "string", "description": "Two-letter US state code (e.g., CA, TX)" }
         },
         "required": ["state"]
       }

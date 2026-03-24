@@ -14,10 +14,9 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 
-# Base project directory (safe even when script runs from elsewhere)
-# BASE_DIR represents the directory where seeder.py is located
-BASE_DIR = Path(__file__).parent
-
+# --- PATH ADJUSTMENT FOR SRC/ STRUCTURE ---
+# Since this file is in 'src/', we go up one level to reach the project root
+BASE_DIR = Path(__file__).parent.parent.resolve()
 
 DATA_PATH = BASE_DIR / "data" # folder containing files to be processed
 CHROMA_PATH = BASE_DIR / "chroma_db" # folder to store ChromaDB
@@ -36,7 +35,7 @@ def load_documents():
     }
 
     print(f"--- Loading documents from {DATA_PATH} ---")
-    documents = []
+    all_documents = []
 
     for ext, loader_cls in loaders.items():
         loader = DirectoryLoader(
@@ -44,18 +43,23 @@ def load_documents():
             glob=f"**/*{ext}",
             loader_cls=loader_cls,
             show_progress=True,
+            use_multithreading=True 
         )
-        docs = loader.load()
+        
+        try:
+            docs = loader.load()
+            
+            # Attach filename metadata (useful for retrieval later)
+            for d in docs:
+                original_path = d.metadata.get("source", "")
+                clean_filename = Path(original_path).name
+                d.metadata["source_file"] = clean_filename
+                
+            all_documents.extend(docs)
+        except Exception as e:
+            print(f" Error loading {ext} files: {e}")
 
-        # Attach filename metadata (useful for retrieval later)
-        for d in docs:
-            d.metadata["source_file"] = Path(d.metadata.get("source", "")).name
-
-        documents.extend(docs)
-        # takes the list of documents found for one file type (like all the PDFs)
-        # and adds them to the master list (documents) before returning everything to be chunked
-
-    return documents
+    return all_documents
 
 
 # primary job is to take the massive strings of text extracted from your PDFs and Text files
@@ -68,6 +72,7 @@ def chunk_documents(documents):
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000,
         chunk_overlap=200,
+        add_start_index=True,
         separators=["\n\n", "\n", " ", ""],
     )
 
@@ -85,6 +90,7 @@ def embed_and_store(chunks):
 
     print("--- Embedding and storing in ChromaDB ---")
 
+    # Using the same model as your mcp_server.py is CRITICAL for retrieval
     embedding_model = HuggingFaceEmbeddings(
         model_name="sentence-transformers/all-MiniLM-L6-v2"
     )
@@ -95,13 +101,15 @@ def embed_and_store(chunks):
         persist_directory=str(CHROMA_PATH),
     )
 
-    db.persist()
+    if hasattr(db, 'persist'):
+        db.persist()
+        
     print(f"Success! Database created at '{CHROMA_PATH}'")
 
 def main():
     # Clear existing database if you want a clean sync
     if CHROMA_PATH.exists():
-        print(" Clearing existing ChromaDB...")
+        print(" Clearing existing ChromaDB for fresh sync...")
         shutil.rmtree(CHROMA_PATH)
 
     documents = load_documents()

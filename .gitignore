@@ -13,10 +13,12 @@ env/
 # Vector Database (Local data should never be committed)
 chroma_db/
 *.db
+*.sqlite3
 
 # AI Specific / Model Caches
 .cache/
 flashrank_models/
+/tmp/flashrank/
 
 # Logs and temp files
 *.log
@@ -27,7 +29,11 @@ tmp/
 .idea/
 .DS_Store
 
-# Sensitive Data (VERY IMPORTANT)
+# Sensitive Data
 .env
+# Ignore all files in data, but keep the folder structure
 data/*
 !data/.gitkeep
+
+# Tool configuration (Optional: uncomment if tools.json is machine-specific)
+# tools.json
